@@ -1,0 +1,22 @@
+2014-05-14
+    * pyml.py (PyML): Aggiunta variabile self.script_wd per PyML.exec_segment
+    * pyml.py (PyML.exec_segment): Rimosso bug della WorkingDirectory degli script (wd relativa alla radice dei file)
+2014-05-15
+    * main.py (Client.start): Ricostruito metodo di individuazione del tipo di richiesta
+                              Aggiunta variabile self.request, contenente la richiesta HTTP
+                              Aggiunto supporto per richieste HEAD
+    * main.py (Client.elab): Aggiunto supporto richiesta HEAD
+    * main.py (Client.sendError): Aggiunto supporto richiesta HEAD
+2014-05-22
+    * main.py (Client.start): Assegnati i metodi HTTP PUT, DELETE, PATCH, TRACK, OPTIONS all'errore 405
+    * main.py (Client.sendError): Aggiunto errore 405 Method Not Allowed
+2014-06-11
+    * main.py (Client.prepareFile): Aggiunta differenziazione metodi 200 OK e 206 Partial Content
+    * main.py (Client.start): Aggiunto differenziazione metodi 200 e 206 per lo streaming
+2014-06-13
+    * changelog: Sistemato un typo :)
+                 Cambiato il nome in CHANGELOG (Conforme agli standard)
+    * pyml.py (PyML.exec_segment): Aggiunto supporto alle sequenze di escape ascii, esadecimali e ottali
+2014-06-24
+    * shared.py: (decodeurl) Aggiunto riconoscimento stringa binaria (Dettagli all'inizio della funzione)
+    * Prima alpha su github.com
