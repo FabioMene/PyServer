@@ -1,10 +1,10 @@
-▓▓▓▓▄               ▓▓▓▓▓  ▓▓▓▓▓▓▓  ▓▓▓▓▓▄ ▓▓    ▓▓ ▓▓▓▓▓▓▓  ▓▓▓▓▓▄
-▓▓    ▓ ▓▓  ▓▓  ▓       ▓▓       ▓▓    ▓ ▓▓   ▓▓  ▓▓       ▓▓    ▓ 
-▓▓▀▀▀  ▓▓ ▓▓    ▓▓▓▓   ▓▓▓▓▓▓   ▓▓ ▄▀  ▓▓  ▓▓   ▓▓▓▓▓▓   ▓▓ ▄▀
-▓▓       ▓▓          ▓  ▓▓       ▓▓ ▓▓   ▓▓ ▓▓    ▓▓       ▓▓ ▓▓   
-▓▓      ▓▓      ▓▓▓▓▓   ▓▓▓▓▓▓▓  ▓▓   ▓▓ ▓▄▀       ▓▓▓▓▓▓▓  ▓▓   ▓▓  
-       ▓▓    
-       
+____         _____
+|   \       /
+|___/ \   / \____   __          __
+|      \ /       \ /__\ |/ | / /__\ |/
+|       /   _____/ \__  |  |/  \__  |
+      _/
+
 -----------------------------------
 Server HTTP basato su Python
 Copyright (c) 2014 Meneghetti Fabio
@@ -36,87 +36,94 @@ Tra parentesi quadre e' indicato il valore originale
 Se il campo e' racchiuso tra parentesi graffe vuol dire che la feature e'
 in sviluppo e non funzionera' indipendentemente dal settaggio
 
-DEBUG                               Imposta il livello di debug (D, I, W, E; rispettivamente debug, info, attenzione, errore)
-                                    Un qualunque altro valore (Anche le lettere sopra in minuscolo)
-                                    disabilita il debug
-                                    ["I"]
+DEBUG                             Imposta il livello di debug
+                                  (D, I, W, E; rispettivamente debug, info, attenzione, errore)
+                                  Un qualunque altro valore (Anche le lettere sopra in minuscolo)
+                                  disabilita il debug
+                                  ["I"]
 
-DEBUG_COLORS                        Su sistemi unix/linux o comunque terminali
-                                    che supportano lo standard vt100 e' possibile colorare
-                                    i tag di debug per distinguerli meglio
-                                    [False]
+DEBUG_COLORS                      Su sistemi unix/linux o comunque terminali
+                                  che supportano lo standard vt100 e' possibile colorare
+                                  i tag di debug per distinguerli meglio
+                                  [False]
 
-DEBUG_FILE                          E' possibile scrivere il debug anche su file.
-                                    Per disabilitarlo lasciare il campo vuoto
-                                    ["PyServer.log"]
+DEBUG_FILE                        E' possibile scrivere il debug anche su file.
+                                  Per disabilitarlo lasciare il campo vuoto
+                                  ["PyServer.log"]
 
-DEBUG_FILE_APPEND_MODE              Se impostato a True aggiunge il debug al file invece che
-                                    sovrascrivere il file stesso
-                                    [False]
+DEBUG_FILE_APPEND_MODE            Se impostato a True aggiunge il debug al file invece che
+                                  sovrascrivere il file stesso
+                                  [False]
 
-INDEX_ORDER                         La lista indica l'ordine di ricerca del file di index
-                                    quando un client richiede una pagina tipo http(s)://indirizzoserver/ o
-                                    http(s)://indirizzoserver/cartelle/altre_cartelle/
-                                    Se nessun file viene trovato viene inviato un errore 404
-                                    [[".pyml", ".pyhtml", ".html", ".htm"]] (e' una lista!)
+INDEX_ORDER                       La lista indica l'ordine di ricerca del file di index
+                                  quando un client richiede una pagina tipo http(s)://indirizzoserver/ o
+                                  http(s)://indirizzoserver/cartelle/altre_cartelle/
+                                  Se nessun file viene trovato viene inviato un errore 404
+                                  [[".pyml", ".pyhtml", ".html", ".htm"]] (e' una lista!)
 
-WEBDISK_PATH                        La stringa indica un percorso, relativo o assoluto, indicante la radice
-                                    dei file disponibili sul server
-                                    ["webdisk"]
+WEBDISK_PATH                      La stringa indica un percorso, relativo o assoluto, indicante la radice
+                                  dei file disponibili sul server
+                                  ["webdisk"]
 
-{CHROOT_ON_LOAD}                    Se impostato a True, una volta completato il caricamento dei server il programma
-                                    esegue un chroot su WEBDISK_PATH in modo da aumentare la sicurezza.
-                                    Richiede i privilegi di amministratore/root
-                                    Linux/Unix: Cambia anche i permessi dell'utente a daemon dopo chroot e dopo aver modificato
-                                                ad a+rwx i permessi di WEBDISK_PATH
-                                                Prima della chiusura del programma vengono reimpostati i permessi
-                                    [False]
+{CHROOT_ON_LOAD}                  Se impostato a True, una volta completato il caricamento dei server il programma
+                                  esegue un chroot su WEBDISK_PATH in modo da aumentare la sicurezza.
+                                  Richiede i privilegi di amministratore/root
+                                  Linux/Unix: Cambia anche i permessi dell'utente a daemon dopo
+                                              chroot e dopo aver modificato
+                                              ad a+rwx i permessi di WEBDISK_PATH
+                                              Prima della chiusura del programma vengono reimpostati i permessi
+                                  [False]
+POST_UNDEFINED_LENGTH_CHUNK_SIZE  Quando il client esegue una richiesta POST senza il campo Content-Length nell'header
+                                  questa e' la dimensione di ricezione del buffer
+                                  [128]
 
-POST_UNDEFINED_LENGTH_CHUNK_SIZE    Quando il client esegue una richiesta POST senza il campo Content-Length nell'header
-                                    questa e' la dimensione di ricezione del buffer
-                                    [128]
+POST_RECEIVE_BUFFER_SIZE          Questa e' la dimensione di ricezione dei dati nelle richieste POST
+                                  Non deve mai essere superiore alla Window Size TCP (Generalmente 65536 Bytes)
+                                  [16384]
 
-POST_RECEIVE_BUFFER_SIZE            Questa e' la dimensione di ricezione dei dati nelle richieste POST
-                                    Non deve mai essere superiore alla Window Size TCP (Generalmente 65536 Bytes)
-                                    [16384]
+FILE_UPLOAD_CHUNK_SIZE            Quando i file vengono inviati al client questa e' la dimensione del buffer
+                                  Non deve mai essere superiore alla Window Size TCP (Generalmente 65536 Bytes)
+                                  [2048]
 
-FILE_UPLOAD_CHUNK_SIZE              Quando i file vengono inviati al client questa e' la dimensione del buffer
-                                    Non deve mai essere superiore alla Window Size TCP (Generalmente 65536 Bytes)
-                                    [2048]
+HTTP_PORT                         La porta per il server HTTP. Per accedere al server usare http://indirizzoserver:porta/
+                                  Se la porta e' la 80 non serve aggiungere :porta all'URL, ma richiede i
+                                  privilegi di amministratore/root per l'esecuzione del server
+                                  [8080]
 
-HTTP_PORT                           La porta per il server HTTP. Per accedere al server usare http://indirizzoserver:porta/
-                                    Se la porta e' la 80 non serve aggiungere :porta all'URL, ma richiede i
-                                    privilegi di amministratore/root per l'esecuzione del server
-                                    [8080]
+HTTP_BACKLOG                      La coda del server HTTP. Un valore grande diminuisce il rischio
+                                  di DoS (in particolare SYN Flood)
+                                  a scapito delle prestazioni di rete
+                                  [256]
 
-HTTP_BACKLOG                        La coda del server HTTP. Un valore grande diminuisce il rischio di DoS (in particolare SYN Flood)
-                                    a scapito delle prestazioni di rete
-                                    [256]
+HTTPS_ENABLED                     Se impostato a True viene attivato anche il server HTTPS.
+                                  Viene ignorata se il modulo OpenSSL non e' presente.
+                                  Sono inoltre necessari una chiave privata e un certificato
+                                  (Vedi HTTPS_KEY, HTTPS_CERT)
+                                  [False]
 
-HTTPS_ENABLED                       Se impostato a True viene attivato anche il server HTTPS. Viene ignorata se il
-                                    modulo OpenSSL non e' presente. Sono inoltre necessari una chiave privata e un certificato
-                                    (Vedi HTTPS_KEY, HTTPS_CERT)
-                                    [False]
+HTTPS_PORT                        La porta per il server HTTPS.
+                                  Per accedere al server usare https://indirizzoserver:porta/
+                                  Se la porta e' la 443 non serve aggiungere :porta all'URL, ma richiede i
+                                  privilegi di amministratore/root per l'esecuzione del server.
+                                  [8443]
 
-HTTPS_PORT                          La porta per il server HTTPS. Per accedere al server usare https://indirizzoserver:porta/
-                                    Se la porta e' la 443 non serve aggiungere :porta all'URL, ma richiede i
-                                    privilegi di amministratore/root per l'esecuzione del server.
-                                    [8443]
+HTTPS_BACKLOG                     La coda del server HTTP. Un valore grande diminuisce il rischio
+                                  di DoS (in particolare SYN Flood)
+                                  a scapito delle prestazioni di rete
+                                  [128]
 
-HTTPS_BACKLOG                       La coda del server HTTP. Un valore grande diminuisce il rischio di DoS (in particolare SYN Flood)
-                                    a scapito delle prestazioni di rete
-                                    [128]
-
-HTTPS_KEY                           La chiave privata e il certificato per il server HTTPS
-HTTPS_CERT                          Su linux/unix si possono generare con il comando
-                                        openssl genrsa -des3 -out chiave_privata_server.key 1024
-                                        openssl req -new -key chiave_privata_server.key -out chiave_privata_server.cert
-                                    Verranno generati i file chiave_privata_server.key e chiave_privata_server.cert con algoritmo des3
-                                    [""], [""]
+HTTPS_KEY                         La chiave privata e il certificato per il server HTTPS
+HTTPS_CERT                        Su linux/unix si possono generare con il comando
+                                      openssl genrsa -des3 -out chiave_privata_server.key 1024
+                                      openssl req -new -key chiave_privata_server.key -out chiave_privata_server.cert
+                                  Verranno generati i file chiave_privata_server.key e
+                                  chiave_privata_server.cert con algoritmo des3
+                                  [""], [""]
 
 Python Markup Language
 -----------------------------------
-Il server mette a disposizione un linguaggio ibrido tra HTML e Python, con estensione .pyhtml o .pyml
+Il server mette a disposizione un linguaggio ibrido tra HTML e Python,
+con estensione .pyhtml o .pyml
 eseguito lato server e inviato poi al client
 
 Per inserire codice python in un pyml lo si deve includere nei tag <?py e ?>
@@ -124,7 +131,8 @@ Per inserire codice python in un pyml lo si deve includere nei tag <?py e ?>
         print "ciao <br />"
         print "Mondo!<br />"
     ?>
-Si può inserire codice inline mettendo i tag sulla stessa linea, ma possono contenere una sola istruzione (o più se separate da ";")
+Si può inserire codice inline mettendo i tag sulla stessa linea,
+ma possono contenere una sola istruzione (o più se separate da ";")
     <title><?py print "Titolo dinamico!" ?></title>
 
 Tutte le variabili create in un blocco sono disponibili in tutti quelli successivi
@@ -135,10 +143,11 @@ Una variabile speciale serve ad integrare python con il server: document
     args: lista argomenti passati nell'url (file?arg1=val1&arg2=val2...)
     request: il tipo di richiesta (GET o POST)
     post: Se la richiesta e' post, contiene tutti gli argomenti passati dal browser, separati come l'url
-    rawpost: contiene i dati grezzi ricevuti dal client durante il POST, utili per utilizzare XMLHttpRequest o inviare file dal client
+    rawpost: contiene i dati grezzi ricevuti dal client durante il POST,
+             utili per utilizzare XMLHttpRequest o inviare file dal client
 
-Gli argomenti e i dati POST sono automaticamente convertiti dal formato application/x-www-form-urlencoding ad ASCII o lasciati cosi' come sono se
-vengono rilevati come binari
+Gli argomenti e i dati POST sono automaticamente convertiti dal formato application/x-www-form-urlencoding ad ASCII
+o lasciati cosi' come sono se vengono rilevati come binari
 
 Inoltre 'args' e 'post' sono dizionari particolari: infatti per accedere al valore di 'argomento' nell'url
 
