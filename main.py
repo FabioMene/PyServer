@@ -1,79 +1,129 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# The MIT License (MIT)
-# 
-# Copyright (c) 2014 Meneghetti Fabio
-# 
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-# 
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-# 
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
+#  The MIT License (MIT)
+#  
+#  Copyright (c) 2014 Meneghetti Fabio
+#  
+#  Permission is hereby granted, free of charge, to any person obtaining a copy
+#  of this software and associated documentation files (the "Software"), to deal
+#  in the Software without restriction, including without limitation the rights
+#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#  copies of the Software, and to permit persons to whom the Software is
+#  furnished to do so, subject to the following conditions:
+#  
+#  The above copyright notice and this permission notice shall be included in all
+#  copies or substantial portions of the Software.
+#  
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#  SOFTWARE.
 
-#
-#Python server(v 2.2.1, pyml)
+#Python server(v 2.3.0, pyml)
 
-import socket, time, gzip, os, md5, sys, mimetypes
+CONFIG_FILE="pyserver.conf"
+
+import socket, time, os, sys, mimetypes, zlib, struct
+
+def readtime(f):
+    return struct.unpack("<L", f.read(struct.calcsize("<L")))[0]
+
+def writetime(f, t):
+    f.write(struct.pack("<L", long(t)))
+
 try:
     from OpenSSL import SSL
     have_openssl=True
-except:
+except ImportError:
     have_openssl=False
 from threading import Thread, enumerate
-
+from multiprocessing import Process
 import pyml
-import config
 import shared
+
+config=shared.ServerConfiguration(CONFIG_FILE)
+
+pyml.config=config
 
 I="Info"
 W="Warn"
 E="Err "
 D="Dbg "
-if config.DEBUG_COLORS:
+if config.debug.use_colors:
     colors={
         "I": 34,
         "W": 33,
         "E": 31,
         "D": 0
     }
-if config.DEBUG in ["D", "I", "W", "E"]:
+if config.debug.level in ("D", "I", "W", "E"):
     try:
-        DebugFile=open(config.DEBUG_FILE, "w" if not config.DEBUG_FILE_APPEND_MODE else "a");
+        DebugFile=open(config.paths.debug, "w" if not config.debug.file_append else "a");
     except:
+        print "[INIT] [Debug] Impossibile aprire il file di debug '%s' in scrittura"%(config.paths.debug)
         DebugFile=None
     def debug(level, *msg):
         priority=["D", "I", "W", "E"]
         try:
-            if priority.index(level[0]) >= priority.index(config.DEBUG): 
-                message="[%.4f %s] %s"%(time.time(), level, msg[0]%msg[1:] if msg else "")
+            if priority.index(level[0]) >= priority.index(config.debug.level):
+                t=time.time() 
+                t="%s.%04d"%(time.strftime("%d/%m %H:%M:%S"), int((t-int(t))*1000))
+                message="[%s %s] %s"%(t, level, msg[0]%msg[1:] if msg else "")
                 if DebugFile:
                     DebugFile.write(message+"\n");
                     DebugFile.flush()
-                if config.DEBUG_COLORS:
-                    message="[%.4f \x1b[%d;1m%s\x1b[0m] %s"%(time.time(), colors[level[0]], level, msg[0]%msg[1:] if msg else "")
+                if config.debug.use_colors:
+                    message="[%s \x1b[%d;1m%s\x1b[0m] %s"%(t, colors[level[0]], level, msg[0]%msg[1:] if msg else "")
                 else:
-                    message="[%.4f %s] %s"%(time.time(), level, msg[0]%msg[1:] if msg else "")
+                    message="[%s %s] %s"%(t, level, msg[0]%msg[1:] if msg else "")
                 sys.__stderr__.write(message+"\n")
         except: print("Debug info: messaggio non riconosciuto");
 else:
     def debug(level, *msg):
         return
 
-EXT=config.INDEX_ORDER
-PREFIX=config.WEBDISK_PATH
+pyml.debug=debug
+shared.debug=debug
+
+debug(I, "[INIT] Inizio setup...")
+
+debug(D, "[INIT] Controllo cartelle/percorsi ...")
+
+if config.cache.use:
+    if not os.access(config.paths.cache, os.R_OK | os.W_OK | os.X_OK):
+        debug(W, "[INIT] Impossibile accedere alla cartella cache '%s': cache disabilitata", config.paths.cache)
+        config.cache.use=False
+    debug(D, "[INIT] Cache OK")
+
+if not os.access(config.paths.webdisk, os.R_OK | os.W_OK | os.X_OK):
+    debug(E, "[INIT] Impossibile accedere al disco virtuale!")
+    exit(1)
+debug(D, "[INIT] Disco virtuale OK")
+
+if config.https.use and not (config.paths.https_key and config.paths.https_cert):
+    debug(W, "[INIT] Certificato o chiave privata HTTPS non specificato/a/i: HTTPS disabilitato")
+    config.https.use=False
+elif config.https.use: debug(D, "[INIT] Server SSL OK")
+else: debug(D, "[INIT] Server SSL non abilitato")
+
+if config.http.port < 0 or config.http.port > 65535:
+    debug(E, "[INIT] Porta HTTP non in [0, 65535] (%d): server HTTP disabilitato", config.http.port)
+    config.http.use=False
+
+if config.https.port < 0 or config.https.port > 65535:
+    debug(E, "[INIT] Porta HTTPS non in [0, 65535] (%s): server HTTPS disabilitato", config.https.port)
+    config.https.use=False
+
+if os.getuid() != 0 or os.geteuid() != 0:
+    if config.http.use and config.http.port < 1024:
+        debug(W, "[INIT] Porta HTTP < 1024 (%d): potrebbe essere necessario essere root/admin", config.http.port)
+    if config.https.use and config.https.port < 1024:
+        debug(W, "[INIT] Porta HTTPS < 1024 (%d): potrebbe essere necessario essere root/admin", config.https.port)
+
 
 class Server(Thread):
     sock=None
@@ -83,8 +133,8 @@ class Server(Thread):
         Thread.__init__(self, target=self.mainloop)
         if useSSL:
             self.ssl=SSL.Context(SSL.SSLv23_METHOD)
-            self.ssl.use_privatekey_file(config.HTTPS_KEY)
-            self.ssl.use_certificate_file(config.HTTPS_CERT)
+            self.ssl.use_privatekey_file(config.paths.https_key)
+            self.ssl.use_certificate_file(config.paths.https_cert)
         else:
             self.ssl=None
         self.sock=socket.socket()
@@ -94,8 +144,8 @@ class Server(Thread):
         self.sock.bind(("", port))
         self.sock.listen(backlog)
         self.port=port
-        if useSSL: debug(I, "Server sicuro pronto!(Porta: %d)", port)
-        else: debug(I, "Server pronto!(Porta: %d)", (port))
+        if useSSL: debug(I, "[HTTPS] Server sicuro pronto!(Porta: %d)", port)
+        else: debug(I, "[HTTP ] Server pronto!(Porta: %d)", (port))
     def mainloop(self):
         self.started=True
         self.clients=[]
@@ -104,8 +154,8 @@ class Server(Thread):
             try:
                 client, address=self.sock.accept()
                 tot+=1
-                debug(I, "[%s] Indirizzo %s:%d connesso", "SSL " if self.ssl else "Serv", address[0], self.port)
-                debug(I, "[%s] %d Client(s) collegato/i", "SSL " if self.ssl else "Serv", len(self.clients))
+                debug(I, "[%s] Indirizzo %s:%d connesso", "HTTPS" if self.ssl else "HTTP ", address[0], self.port)
+                debug(I, "[%s] %d Client(s) collegato/i", "HTTPS" if self.ssl else "HTTP ", len(self.clients)+1)
                 debug(I, "[%s] ID Connessione: %d"%(address[0], tot))
                 cl=ClientInit(client, address[0], tot, self.ssl is not None)
                 self.clients.append(cl)
@@ -113,7 +163,7 @@ class Server(Thread):
             except socket.error as e:
                 if e.errno==11: time.sleep(0.05)
                 else:
-                    debug(E, "[Serv] [FATAL] Errore socket: errno %d"%e.errno)
+                    debug(E, "[%s] [FATAL] Errore socket: errno %d"%("HTTPS" if self.ssl else "HTTP ", e.errno))
                     os.abort()
             for c in self.clients:
                 s=c.getState()
@@ -143,38 +193,21 @@ class ClientInit(Thread):
         self.controller=Client(self.cl, self.addr, self.num, self.ssl)
         try:
             self.controller.start()
-        except Exception as e:
-            t, o, tb=sys.exc_info()
-            i=0
-            while tb:
-                if tb.tb_next: print("[Serv][Thread][Err] %s%s: %d: Causato da"%("-"*i, os.path.split(tb.tb_frame.f_code.co_filename)[1], tb.tb_lineno))
-                else: print("[Serv][Thread][Err] %s%s: %d: %s"%("-"*i, os.path.split(tb.tb_frame.f_code.co_filename)[1], tb.tb_lineno, e.message))
-                tb=tb.tb_next
-                i+=1
+        except BaseException as e:
+            shared.createTraceback(e, "[Serv][Thread][Err]")
             self.controller.state=Client.S_ERROR
     def getState(self):
         if self.controller: return self.controller.state
         return -1
 
-class File:
-    def __init__(self, data, size, mime, comp):
+class Page:
+    def __init__(self, data, size, comp):
         self.__data=data
-        self.__mime=mime
         self.__size=size
         self.__comp=comp
     def __str__(self): return self.__data
-    def mime(self): return self.__mime
     def compression(self): return self.__comp
     def size(self): return self.__size
-
-class Header:
-    def __init__(self, data):
-        self.data=data
-    def __call__(self, field, data=None):
-        if data:
-            self.data[field]=data
-        if self.data.has_key(field): return self.data[field]
-        return ""
 
 class Client:
     S_OK=0
@@ -188,8 +221,7 @@ class Client:
     S_TERMINATED=8
     state=S_OK
     coding="ISO-8859-1"
-    days=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    months=["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    compression="identity"
     def __init__(self, cl, addr, dbgnum, ssl):
         self.cl=cl
         self.addr=addr
@@ -205,6 +237,7 @@ class Client:
                 data=cl.recv(1);
                 if data=="":
                     debug(W, "[%s][%d] Nessun dato ricevuto!", addr, dbgnum)
+                    self.state=self.S_TERMINATED
                     return
                 header+=data
         except:
@@ -214,91 +247,104 @@ class Client:
         self.state=self.S_PARSING
         debug(D, "[%s][%d] Connessione ok, analisi Header", addr, dbgnum)
         header=header[:-4].split("\r\n")
-        self.header=self.generateHeader(header)
+        self.header=shared.generateHeader(header)
         if not self.header("Accept-Charset"):
             debug(D, "[%s][%d] L'Header non contiene l'attributo \"Accept-Charset\". Codifica: ISO-8859-1", addr, dbgnum)
             self.header("Accept-Charset", "ISO-8859-1")
         self.state=self.S_PROCESSING_REQUEST
         self.request=header[0].split(" ")[0]
         debug(I, "[%s][%d] Tipo richiesta: %s", addr, dbgnum, self.request)
-        if self.request=="GET": self.elab(header[0][4:-9])
-        elif self.request=="HEAD": self.elab(header[0][5:-9])
-        elif self.request=="POST":
-            self.state=self.S_RECEIVING_POST
-            try:
-                plen=int(self.header("Content-Length"))
-                if plen:
-                    debug(I, "[%s][%d] Ricezione dati da POST (%d bytes)", addr, dbgnum, plen)
-                    pdata=""
-                    while plen > config.POST_RECEIVE_BUFFER_SIZE:
-                        pdata+=cl.recv(config.POST_RECEIVE_BUFFER_SIZE)
-                        plen-=config.POST_RECEIVE_BUFFER_SIZE
-                    if plen: pdata+=cl.recv(plen)
-                else:
-                    debug(I, "[%s][%d] POST vuoto", addr, dbgnum)
-                    pdata=""
-            except:
-                debug(I, "[%s][%d] Ricezione dati da POST (? bytes)", addr, dbgnum)
-                pdata=""
-                precvd=cl.recv(config.POST_UNDEFINED_LENGTH_CHUNK_SIZE)
-                while precvd:
-                    pdata+=precvd
-                    precvd=cl.recv(config.POST_UNDEFINED_LENGTH_CHUNK_SIZE)
-            debug(D, "[%s][%d] Ricevuti %d bytes da POST", addr, dbgnum, len(pdata))
-            self.elab(header[0][5:-9], pdata);
+        if self.request=="GET": self.elab(header[0][4:-9], False)
+        elif self.request=="HEAD": self.elab(header[0][5:-9], False)
+        elif self.request=="POST": self.elab(header[0][5:-9], True)
         elif self.request in ("OPTIONS", "PUT", "DELETE", "PATCH", "TRACK"):
             debug(E, "[%s][%d] Richiesta non consentita", addr, dbgnum)
             self.sendError(405)
         else:
             debug(E, "[%s][%d] Richiesta non riconosciuta", addr, dbgnum)
             self.sendError(400)
-    def elab(self, page, post=False):
-        if "?" in page:
-            page, args=page.split("?")[0], page.split("?")[1]
+    def elab(self, rel_page, post=False):
+        if "?" in rel_page:
+            rel_page, args=rel_page.split("?")[0], rel_page.split("?")[1]
         else:
             args=""
-        page=PREFIX+page
+        page=config.paths.webdisk+rel_page
         if page[-1]=="/":
-            for e in EXT:
+            for e in config.misc.index_search_order:
                 if os.path.exists(page+"index"+e):
                     page+="index"+e
+                    rel_page+="index"+e
                     break
             if page[-1]=="/":
                 self.sendError(404)
                 return
+        if   "gzip"    in self.header("Accept-Encoding"): self.compression = "gzip"
+        elif "deflate" in self.header("Accept-Encoding"): self.compression = "deflate"
+        page=shared.decodeurl(page)
         debug(D, "[%s][%d] Richiesto file \"%s\"", self.addr, self.dbgnum, page)
-        ispage=False
-        for e in EXT:
+        ispage=ispyml=False
+        for e in config.misc.index_search_order:
             try:
                 ispage=page.split(".")[-1] in e
-                if ispage: break
+                ispyml=ispage and "py" in page.split(".")[-1] 
+                if ispage:
+                    break
             except:pass
         self.state=self.S_PREPARING
-        page=shared.decodeurl(page)
         if os.path.exists(page):
+            cfg=os.path.join(os.path.split(page)[0], config.paths.folder_cfg)
+            cfg=shared.readConfig(cfg)[os.path.split(page)[1]]
             if ispage:
-                p=self.preparePage(page, args, post, "gzip")
-                self.state=self.S_SENDING
-                if p:
-                    debug(I, "[%s][%d] Pagina trovata, invio...(%s)", self.addr, self.dbgnum, p.mime())
-                    self.cl.send("HTTP/1.1 200 OK\r\nLocation: %s\r\nContent-Length: %d\r\nContent-Type: %s; charset=%s\r\nContent-Encoding: %s\r\n%sConnection: closed\r\n\r\n"%(self.header("Host"), p.size(), p.mime(), self.coding.upper(), p.compression(), self.generateDate()))
-                    if self.request!="HEAD":
-                        if self.send(str(p)): return
+                if ispyml:
+                    pdata=""
+                    if post and cfg.receive_post:
+                        self.state=self.S_RECEIVING_POST
+                        try:
+                            plen=int(self.header("Content-Length"))
+                            if plen:
+                                debug(I, "[%s][%d] Ricezione dati da POST (%d bytes)", self.addr, self.dbgnum, plen)
+                                pdata=""
+                                while plen > config.buffers.tcp_receive_buffer:
+                                    pdata+=self.cl.recv(config.buffers.tcp_receive_buffer)
+                                    plen-=config.buffers.tcp_receive_buffer
+                                if plen: pdata+=self.cl.recv(plen)
+                            else:
+                                debug(I, "[%s][%d] POST vuoto", self.addr, self.dbgnum)
+                                pdata=""
+                        except:
+                            debug(I, "[%s][%d] Ricezione dati da POST (? bytes)", self.addr, self.dbgnum)
+                            pdata=""
+                            precvd=self.cl.recv(config.buffers.post_undefined_length)
+                            while precvd:
+                                pdata+=precvd
+                                precvd=self.cl.recv(config.buffers.post_undefined_length)
+                        debug(D, "[%s][%d] Ricevuti %d bytes da POST", self.addr, self.dbgnum, len(pdata))
+                    pyml.PyMl(page, self.request, args, pdata, self.header, self.cl, cfg)
+                    self.state=self.S_TERMINATED
                 else:
-                    debug(I, "[%s][%d] Errore interno, invio 500...", self.addr, self.dbgnum)
-                    self.sendError(500)
+                    if post: debug(I, "[%s][%d] POST ignorato: %s non PyMl", self.addr, self.dbgnum, page)
+                    p=self.preparePage(page, rel_page, cfg)
+                    self.state=self.S_SENDING
+                    if p:
+                        debug(I, "[%s][%d] Pagina trovata, invio...(text/html)", self.addr, self.dbgnum)
+                        self.cl.send("HTTP/1.1 200 OK\r\nLocation: %s\r\nContent-Length: %d\r\nContent-Type: text/html; charset=%s\r\nContent-Encoding: %s\r\n%sConnection: close\r\n\r\n"%(self.header("Host"), p.size(), self.coding.upper(), p.compression(), shared.generateDate()))
+                        if self.request!="HEAD":
+                            if self.send(str(p)): return
+                    else:
+                        debug(E, "[%s][%d] Errore interno, invio 500...", self.addr, self.dbgnum)
+                        self.sendError(500)
             else:
-                p=self.prepareFile(page)
+                p=self.prepareFile(page, rel_page, cfg)
                 for d in p:
-                    if not d:
-                        debug(I, "[%s][%d] Errore interno, invio 500...", self.addr, self.dbgnum)
+                    if d == False:
+                        debug(E, "[%s][%d] Errore interno, invio 500...", self.addr, self.dbgnum)
                         self.sendError(500)
                         break
                     elif type(d)==list:
                         debug(I, "[%s][%d] File trovato, streaming%s...(%s)", self.addr, self.dbgnum, " porzione" if "206" in d[2] else "", d[1])
-                        self.cl.send("HTTP/1.1 %s\r\nLocation: %s\r\nContent-Length: %d\r\nContent-Type: %s; charset=%s\r\nContent-Encoding: %s\r\n%sConnection: closed\r\n\r\n"%(d[2], self.header("Host"), d[0], d[1], self.coding.upper(), "identity", self.generateDate()))
+                        self.cl.send("HTTP/1.1 %s\r\nLocation: %s\r\n%sContent-Type: %s; charset=%s\r\nContent-Encoding: %s\r\n%sConnection: close\r\n\r\n"%(d[2], self.header("Host"), ("Content-Length: %d\r\n"%d[0]) if d[0] >= 0 else "", d[1], self.coding.upper(), d[3], shared.generateDate()))
                         self.state=self.S_STREAMING
-                    else:
+                    elif d:
                         if self.send(d): return
         else:
             debug(I, "[%s][%d] File non trovato, invio 404...", self.addr, self.dbgnum)
@@ -306,58 +352,158 @@ class Client:
         debug(I, "[%s][%d] Client scollegato per fine comunicazione", self.addr, self.dbgnum)
         self.cl.close()
         self.state=self.S_TERMINATED
-    def preparePage(self, page, args, pdata, comp):
+    def preparePage(self, page, rel, cfg):
+        if cfg.force_compression: comp=cfg.force_compression
+        else: comp=self.compression
+        q=cfg.force_compression_quality
+        debug(D, "[%s][%d] Compressione con algoritmo %s.%d", self.addr, self.dbgnum, comp, q)
         try:
-            ext=page.split(".")[-1]
-            if ext=="pyml" or ext=="pyhtml": data=pyml.PyMl(page, args, pdata, self.header, prefix=PREFIX).output
-            elif ext=="html" or ext=="htm": data=open(page).read()
-            else: return False
-            md=str(md5.md5(page).hexdigest())
-            if comp=="gzip":
-                fp=gzip.open("tmp/"+md, "wb")
-                fp.write(data)
-                fp.close()
-                fp=open("tmp/"+md, "rb")
-                data=fp.read()
-                fp.close()
-                os.remove("tmp/"+md)
-            elif comp=="identity": pass
-            return File(data, len(data), "text/html", comp)
-        except IOError:
-            return False
-    def prepareFile(self, fname):
+            if comp == "identity":
+                src=open(page, "r")
+                data=src.read()
+                src.close()
+                return Page(data, len(data), "identity")
+            if config.cache.use and (config.cache.on_pages or cfg.force_cache_state == 1) and not cfg.force_cache_state == -1:
+                cache_name=rel.replace("_", "__").replace("/", "_")
+                recreate=True
+                if os.path.exists(os.path.join(config.paths.cache, cache_name)):
+                    debug(D, "[%s][%d] Cache file trovato", self.addr, self.dbgnum)
+                    fp=open(os.path.join(config.paths.cache, cache_name), "rb")
+                    t=readtime(fp)
+                    if t > time.time():
+                        gzip=fp.read()
+                        recreate=False
+                    fp.close()
+                if recreate:
+                    debug(D, "[%s][%d] Cache '%s' scaduta", self.addr, self.dbgnum, rel)
+                    src=open(page, "r")
+                    data=src.read()
+                    src.close()
+                    fp=open(os.path.join(config.paths.cache, cache_name), "wb")
+                    if cfg.force_cache_validity: t=time.time()+cfg.force_cache_validity
+                    else: t=time.time()+config.cache.pages_validity
+                    writetime(fp, t)
+                    gzip=shared.get_gzip(data, q)
+                    fp.write(gzip)
+                    fp.close()
+            else:
+                src=open(page, "r")
+                data=src.read()
+                src.close()
+                gzip=shared.get_gzip(data, q)
+            return Page(gzip[10:-8] if comp == "deflate" else gzip, struct.unpack("<L", gzip[-4:])[0], comp)
+        except BaseException as e:
+            debug(W, "[%s][%d] Errore durante la lettura/compressione dati", self.addr, self.dbgnum)
+            shared.createTraceback(e, "[%s][%d][preparePage]"%(self.addr, self.dbgnum))
+        return False
+    def prepareFile(self, fname, rel, cfg):
+        if cfg.force_compression: compr=cfg.force_compression
+        else: compr=self.compression
+        mime=mimetypes.guess_type(fname)[0] or ""
+        size=os.stat(fname).st_size
+        if compr == "identity":
+            try:
+                f=open(fname, "rb")
+                min=0
+                max=size-1
+                hdr="200 OK"
+                if self.header("Range"):
+                    m, M=tuple(self.header("Range").split("=")[1].split("-"))
+                    if m=="" and M=="": pass
+                    elif m=="":
+                        max=int(M)
+                        min=size-max
+                    elif M=="":
+                        min=int(m)
+                    else:
+                        min=int(m)
+                        max=int(M)
+                    debug(I, "[%s][%d] Richiesta porzione file: %s-%s"%(self.addr, self.dbgnum, m, M))
+                    hdr="206 Partial Content"
+                f.seek(min, 0)
+                yield [size, mime, hdr, compr]
+                while 1:
+                    if min+config.buffers.send_buffer > max:
+                        yield f.read()
+                        break
+                    else:
+                        yield f.read(config.buffers.send_buffer)
+                        min+=config.buffers.send_buffer
+                f.close()
+            except BaseException as e:
+                shared.createTraceback(e, "[%s][%d][prepareFile]"%(self.addr, self.dbgnum))
+                yield False
+            raise StopIteration
+        q=cfg.force_compression_quality
+        cache=False
+        recreate=True
+        comp=shared.Compressor(q)
+        if (size < config.cache.large_files_low_size and config.cache.use and (config.cache.on_files or cfg.force_cache_state == 1) and not cfg.force_cache_state == -1) \
+         or \
+         (size >= config.cache.large_files_low_size and config.cache.use and (config.cache.on_large_files or cfg.force_cache_state == 1) and not cfg.force_cache_state == -1):
+            large = size < config.cache.large_files_low_size
+            cache=True
+            cache_name=rel.replace("_", "__").replace("/", "_")
+            if os.path.exists(os.path.join(config.paths.cache, cache_name)):
+                debug(D, "[%s][%d] Cache file trovato", self.addr, self.dbgnum)
+                fp=open(os.path.join(config.paths.cache, cache_name), "rb")
+                t=readtime(fp)
+                if t > time.time():
+                    recreate=False
+                    size=os.stat(os.path.join(config.paths.cache, cache_name)).st_size
+            if recreate:
+                debug(D, "[%s][%d] Cache '%s' scaduta", self.addr, self.dbgnum, rel)
+                src=open(fname, "rb")
+                fp=open(os.path.join(config.paths.cache, cache_name), "wb")
+                if cfg.force_cache_validity: t=time.time()+cfg.force_cache_validity
+                elif large: t=time.time()+config.cache.lfiles_validity
+                else: t=time.time()+config.cache.files_validity
+                writetime(fp, t)
+                fp.write("\x1f\x8b\x08\x00"+struct.pack("<L", long(time.time()))+"\x00\xff")
         try:
-            mime=mimetypes.guess_type(fname)[0]
-            f=open(fname, "rb")
-            size=os.path.getsize(fname)
-            min=0
-            max=size-1
-            hdr="200 OK"
-            if self.header("Range"):
-                m, M=tuple(self.header("Range").split("=")[1].split("-"))
-                if m=="" and M=="": pass
-                elif m=="":
-                    max=int(M)
-                    min=size-max
-                elif M=="":
-                    min=int(m)
+            if cache:
+                if recreate:
+                    yield [-1, mime, "200 OK", compr]
+                    if compr == "gzip": yield "\x1f\x8b\x08\x00"+struct.pack("<L", long(time.time()))+"\x00\xff"
+                    while size > 0:
+                        data=src.read(config.buffers.send_buffer)
+                        data=comp.compress(data)
+                        fp.write(data)
+                        yield data
+                        size-=config.buffers.send_buffer
+                    yield comp.finish()
+                    if compr == "gzip": yield struct.pack("<LL", comp.crc32, comp.size)
+                    src.close()
                 else:
-                    min=int(m)
-                    max=int(M)
-                debug(I, "[%s][%d] Richiesta porzione file: %s-%s"%(self.addr, self.dbgnum, m, M))
-                hdr="206 Partial Content"
-            f.seek(min, 0)
-            yield [size, mime, hdr]
-            while 1:
-                if min+config.FILE_UPLOAD_CHUNK_SIZE > max:
-                    yield f.read()
-                    break
-                else:
-                    yield f.read(config.FILE_UPLOAD_CHUNK_SIZE)
-                    min+=config.FILE_UPLOAD_CHUNK_SIZE
-            f.close()
-        except Exception as e:
-            print e
+                    yield [size, mime, "200 OK", compr]
+                    data=fp.read(10)
+                    if compr == "gzip": yield data
+                    while 1:
+                        if size - config.buffers.send_buffer > 8:
+                            data=fp.read(config.buffers.send_buffer)
+                        else:
+                            data=fp.read(size-config.buffers.send_buffer)
+                        yield data
+                        size-=len(data)
+                        if len(data) < config.buffers.send_buffer: break
+                    if compr == "gzip": yield fp.read()
+                fp.close()
+            else:
+                fp=open(fname, "rb")
+                while 1:
+                    yield [-1, mime, "200 OK", compr]
+                    if compr == "gzip": yield "\x1f\x8b\x08\x00"+struct.pack("<L", long(time.time()))+"\x00\xff"
+                    while size > 0:
+                        data=fp.read(config.buffers.send_buffer)
+                        data=comp.compress(data)
+                        yield data
+                        size-=config.buffers.send_buffer
+                    yield comp.finish()
+                    if compr == "gzip": yield struct.pack("<LL", comp.crc32, comp.size)
+        except GeneratorExit:
+            pass
+        except BaseException as e:
+            shared.createTraceback(e, "[%s][%d][prepareFile]"%(self.addr, self.dbgnum))
             yield False
         raise StopIteration
     def send(self, data):
@@ -372,16 +518,6 @@ class Client:
             self.cl.close()
             self.state=self.S_TERMINATED
             return True
-    def generateHeader(self, header):
-        d={}
-        for i in header[1:]:
-            p=i.split(": ")
-            try: d[p[0]]=p[1]
-            except: d[p[0]]=""
-        return Header(d)
-    def generateDate(self):
-        t=time.gmtime(time.time())
-        return "Date: %s, %d %s %d %d:%d:%d GMT\r\n"%(self.days[t.tm_wday], t.tm_mday, self.months[t.tm_mon-1], t.tm_year, t.tm_hour, t.tm_min, t.tm_sec)
     def sendError(self, code):
         template="""
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
@@ -392,6 +528,10 @@ class Client:
         <style>
             body{
                 font-family: helvetica, sans, arial;
+                background-image: url('/pyserverback.png');
+                position: fixed;
+                background-repeat: no-repeat;
+                background-size: cover;
             }
         </style>
     </head>
@@ -416,26 +556,32 @@ class Client:
         else:
             s="500 Internal Server Error"
             template=template%(500, 500, "Errore Server: ci scusiamo per il disagio")
-        p=File(template, len(template), "text/html", "identity")
-        self.cl.send("HTTP/1.1 "+s+"\r\nLocation: %s\r\nContent-Length: %d\r\nContent-Type: %s; charset=%s\r\nContent-Encoding: %s\r\n%sConnection: closed\r\n\r\n"%(self.header("Host"), p.size(), p.mime(), self.coding.upper(), p.compression(), self.generateDate()))
+        p=Page(template, len(template), "identity")
+        self.cl.send("HTTP/1.1 "+s+"\r\nLocation: %s\r\nContent-Length: %d\r\nContent-Type: text/html; charset=%s\r\nContent-Encoding: %s\r\n%sConnection: close\r\n\r\n"%(self.header("Host"), p.size(), self.coding.upper(), p.compression(), shared.generateDate()))
         if self.request!="HEAD": self.cl.send(str(p))
         self.cl.close()
         self.state=self.S_TERMINATED
 
-serv=Server(config.HTTP_PORT, config.HTTP_BACKLOG, False)
-serv.start()
+if config.http.use:
+    serv=Server(config.http.port, config.http.backlog, False)
+    serv.start()
+else: serv=None
 
-if config.HTTPS_ENABLED and have_openssl:
-    sserv=Server(config.HTTPS_PORT, config.HTTPS_BACKLOG, True)
+if config.https.use and have_openssl:
+    sserv=Server(config.https.port, config.https.port, True)
     sserv.start()
 else: sserv=None
 
-s=serv
+if not serv and not sserv:
+    debug(E, "Almeno uno dei server HTTP/S deve essere attivo: uscita")
+    exit(1)
+
+s=serv or sserv
 i=""
 while 1:
     i=raw_input()
     if i=="quit" or i=="q" or i=="exit": break
-    elif i=="http" and sserv:
+    elif i=="http" and serv:
         s=serv
         print "Selezionato il server HTTP"
     elif i=="https" and sserv:
@@ -457,11 +603,14 @@ while 1:
            elif st==Client.S_ERROR:              print "Errore nel Thread"
            elif st==Client.S_TERMINATED:         print "Thread terminato"
            else:                                 print "Thread non avviato"
-    elif i=="disconn" or i=="d":
-        print "Tutti i client disconnessi"
+    elif i=="discon" or i=="d":
         for x in range(len(s.clients)):
             s.clients[x].controller.state=Client.S_TERMINATED
-s.stop()
+        print "Tutti i client disconnessi"
+
+if serv: serv.stop()
+if sserv: sserv.stop()
+
 if DebugFile: DebugFile.close()
 exit(0)
 

@@ -20,35 +20,60 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-# File di configurazione per PyServer (>= 2.0.1)
+# Configurazione di default
 
-#Abilita/disabilita debug
-#Livelli: D, I, W, E
-DEBUG="I"
-DEBUG_COLORS=False
-DEBUG_FILE="PyServer.log"
-DEBUG_FILE_APPEND_MODE=False
+DEFAULT_CONFIG={
+    # debug
+    "debug": {
+        "level":       "I",   # livello di debug: D (Debug), I (Info), W (Attenzione), E (Errore)
+        "use_colors":  False, # Utilizza colorazione livelli su terminali vt100 (o compatibili)
+        "file_append": False  # Accoda il debug al file (config.paths.debug) invece che sovrascriverlo
+    },
 
-#Priorita' ricerca index
-INDEX_ORDER=[".pyml", ".pyhtml", ".html", ".htm"]
+    #Percorso file
+    "paths": {
+        "debug":      "PyDebug.log",                   # File di debug
+        "webdisk":    "webdisk",                       # HD Virtuale
+        "folder_cfg": ".pyserver.folder_options.conf", # nome dei file di configurazione cartella
+        "cache":      "tmp",                           # Posizione copie cache
+        "https_key":  "",                              # Chiave privata SSL
+        "https_cert": ""                               # Certificato pubblico SSL
+    },
 
-#Percorso file
-WEBDISK_PATH="webdisk"
+    #Comportamento alla mancanza di Content-Length in POST
+    "buffers": {
+        "post_undefined_length": 128,  # Content-Length in POST non definito
+        "send_buffer":           2048, # Buffer di invio
+        "tcp_receive_buffer":    32768 # Buffer di ricezione (Non dovrebbe essere superiore a 65536)
+    },
 
-#Comportamento alla mancanza di Content-Length in POST
-POST_UNDEFINED_LENGTH_CHUNK_SIZE=128
-POST_RECEIVE_BUFFER_SIZE=16384
+    #Caching pagine e file
+    "cache": {
+        "use":                  True,        # Abilita cache
+        "on_pages":             True,        # Abilita caching delle pagine. Puo' essere bypassato con opt->force_cache_state
+        "pages_validity":       300,         # Validita' delle copie cache delle pagine in secondi dalla creazione
+        "on_files":             True,        # Abilita caching dei file. Puo' essere bypassato con opt->force_cache_state
+        "files_validity":       300,         # Validita' delle copie cache dei file in secondi dalla creazione
+        "on_large_files":       False,       # Abilita caching dei file grandi. Puo' essere bypassato con opt->force_cache_state
+        "large_files_low_size": 1024*1024*4, # Dimensione sopra la quale un file viene considerato grande
+        "lfiles_validity":      600,         # Validita' delle copie cache dei file grandi in secondi dalla creazione
+    },
 
-#dimensione uploads
-FILE_UPLOAD_CHUNK_SIZE=2048
+    #Un po di misc non fa mai male!
+    "misc": {
+        "index_search_order": [".pyml", ".pyhtml", ".htm", ".html"] # Ordine di ricerca del file index
+    },
 
-#Configurazione porte
-HTTP_PORT=8080
-HTTP_BACKLOG=256
+    #Configurazione porte
+    "http": {
+        "use":     True, # Usa HTTP
+        "port":    8080, # Porta HTTP
+        "backlog": 256   # Coda di accettazione
+    },
 
-HTTPS_ENABLED=False
-HTTPS_PORT=8443
-HTTPS_BACKLOG=128
-HTTPS_KEY=""
-HTTPS_CERT=""
-
+    "https": {
+        "use":     False, # Usa HTTPS
+        "port":    8443,  # Porta HTTPS
+        "backlog": 128    # Coda di accettazione
+    }
+}

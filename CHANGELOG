@@ -1,22 +1,67 @@
 2014-05-14
-    * pyml.py (PyML): Aggiunta variabile self.script_wd per PyML.exec_segment
-    * pyml.py (PyML.exec_segment): Rimosso bug della WorkingDirectory degli script (wd relativa alla radice dei file)
+    * pyml.py: (PyML) Aggiunta variabile self.script_wd per PyML.exec_segment
+    * pyml.py: (PyML.exec_segment) Rimosso bug della WorkingDirectory degli script (wd relativa alla radice dei file)
 2014-05-15
-    * main.py (Client.start): Ricostruito metodo di individuazione del tipo di richiesta
+    * main.py: (Client.start) Ricostruito metodo di individuazione del tipo di richiesta
                               Aggiunta variabile self.request, contenente la richiesta HTTP
                               Aggiunto supporto per richieste HEAD
-    * main.py (Client.elab): Aggiunto supporto richiesta HEAD
-    * main.py (Client.sendError): Aggiunto supporto richiesta HEAD
+    * main.py: (Client.elab) Aggiunto supporto richiesta HEAD
+    * main.py: (Client.sendError) Aggiunto supporto richiesta HEAD
 2014-05-22
-    * main.py (Client.start): Assegnati i metodi HTTP PUT, DELETE, PATCH, TRACK, OPTIONS all'errore 405
-    * main.py (Client.sendError): Aggiunto errore 405 Method Not Allowed
+    * main.py: (Client.start) Assegnati i metodi HTTP PUT, DELETE, PATCH, TRACK, OPTIONS all'errore 405
+    * main.py: (Client.sendError) Aggiunto errore 405 Method Not Allowed
 2014-06-11
-    * main.py (Client.prepareFile): Aggiunta differenziazione metodi 200 OK e 206 Partial Content
-    * main.py (Client.start): Aggiunto differenziazione metodi 200 e 206 per lo streaming
+    * main.py: (Client.prepareFile) Aggiunta differenziazione metodi 200 OK e 206 Partial Content
+    * main.py: (Client.start) Aggiunto differenziazione metodi 200 e 206 per lo streaming
 2014-06-13
     * changelog: Sistemato un typo :)
                  Cambiato il nome in CHANGELOG (Conforme agli standard)
     * pyml.py (PyML.exec_segment): Aggiunto supporto alle sequenze di escape ascii, esadecimali e ottali
-2014-06-24
-    * shared.py: (decodeurl) Aggiunto riconoscimento stringa binaria (Dettagli all'inizio della funzione)
-    * Prima alpha su github.com
+    * shared.py (decodeurl): Aggiunto riconoscimento stringhe binarie
+    Prima release su github.com (https://github.com/FabioMene/PyServer)
+2014-06-26 -> 2014-06-29 (Ehhhhh!)
+    * Aggiornato il progetto a versione 2.3.0
+    * main.py: Aggiunta variabile 'CONFIG_FILE' per il file di configurazione
+               Configurazione completamente rielaborata, in formato conf
+               Controllo configurazione e accessibilita' cartelle all'avvio
+               Cambiato il tag http da 'Serv' a 'HTTP '
+               Cambiato il tag https da 'SSL' a 'HTTPS'
+               (ClientInit) Globalizzato metodo risoluzione traceback (inserito in shared.py)
+               (File) Cambiata nome classe in 'Page' e rimosso l'attributo 'mime' (text/html)
+               (Client) Aggiunta variabile 'compression'
+               (Client.elab) Aggiunto metodo di selezione della compressione, in ordine: gzip, deflate, identity
+                             Aggiunta variabile 'cfg' (dopo aver verificato l'esistenza del file) contenente la configurazione della cartella
+                             Modificato metodo  di elaborazione PyMl a dinamico (finalmente :D)
+                             Aggiunto campo 'Content-Encoding' nella sezione di streaming file
+               (Client.preparePage) Aggiunta elaborazione metodi di compressione e di caching, tenendo conto di tutti i modificatori in 'cfg'
+                                    Aggiunta elaborazione del traceback in caso di errore (Si spera di no ;D)
+               (Client.prepareFile) Aggiunta elaborazione metodi di compressione e di caching, tenendo conto di tutti i modificatori in 'cfg'
+                                    Aggiunta elaborazione del traceback in caso di errore (Si spera di no ;D) (Copia e incolla evidente ...)
+                                    NOTAH! le richieste contenenti 'Range' saranno trattate comunque come 200 OK, tranne nel caso che la compressione si identity
+               Cambiato qualcosa a livello di selezione server nella minishell
+    * pyml.py: (Document) Aggiunto header di richiesta come 'document.header' accessibile nel solito modo (get=header(attr), set=header(attr, val))
+               (Stream) Aggiunta classe Stream, contente i dettagli di streaming quali socket(client), header e altra robba
+                        Supporto alla compressione on-the-fly (o al volo per tradizionalisti) e cambio dei '\n' a '<br />' (Conforme al w3c, mica medda!) [Predef: abilitato]
+                        Supporto al live streaming con stream.setWait(False) o all'accodamento di cio' che viene inviato con stream.setWait(True)
+                        Classe inizializzata richiamabile tramite 'stream' o 'sys.stdout' (Si' e' un piccolo hack di sys =)
+                        NOTAHH! il metodo finish viene chiamato dall'esterno, non e' possibile chiamarlo nello script perche' genera alla fine del'esecuzione della pagina un errore 
+               (PyMl) Aggiunto override dei metodi 'exit' e 'quit' che terminano e inviano la pagina al client ISTANTANEAMENTEH!
+    * shared.py: Aggiunto un fracasso di robba, tra cui configurazioni, compressioni e bombe al plasma
+                 (Dict) rifatto il metodo di richiesta elementi
+                 (ServerConfiguration) Classe (inizializzata globalmente come 'config') per leggere la configurazione del server.
+                                       Non e' tollerante: se un qualsiasi attributo o tipo di valore sono errati la configurazione viene ripristinata al default
+                 (DEFAULT_ATTRIBUTES) Questo e' un dizionario contenente i default della configurazione delle cartelle (Simile ad .htaccess ma (forse) piu' esteso)
+                                      Ad ogni chiave corrisponde una lista di due elementi: rispettivamente tipo e valore di default
+                 (FileConfiguration) Contiene la configurazione cartella
+                 (.*) Spostati qui tutti i metodi relativi alla generazione di header HTTP(S)
+                 (Compressor) Fornisce una classe per la compressione DEFLATE + il calcolo di dimesione e crc32
+                 (get_gzip) Crea uno stream GZip tramite Compressor, ritornato on-the-fly come stringa (Con header e crc32)
+    * config.py: ATTENZIONEH! Questo file non e' piu' la configurazione del server! Modifica la variabile CONFIG_FILE in main.py per designare un file di configurazione personalizzato
+                 Nel caso in cui:
+                    - il file di configurazione non sia presente
+                    - la configurazione sia buggata (bacata, corrotta, chiamala come ti pare ;)
+                    - si verifichi un attacco alieno
+                 il file di configurazione verra' ingorato e verranno applicati questi standard (o comunque vengono applicati dalla riga di errore in poi)
+
+    Seconda release su github.com (https://github.com/FabioMene/PyServer)
+
