@@ -12,7 +12,7 @@ Copyright (c) 2014 Meneghetti Fabio
 
 Introduzione
 -----------------------------------
-PyServer è un server HTTP/HTTPS leggero, scritto in python e cercando di utilizzare
+PyServer è un server HTTP/HTTPS leggero, scritto in python cercando di utilizzare
 meno moduli esterni possibili
 
 Utilizzo
@@ -23,7 +23,7 @@ nella cartella dove è presente
 Requisiti
 -----------------------------------
 * Python versione 2.6/2.7
-* I moduli socket, time, gzip, os, md5, sys, mimetypes (Tutti integrati)
+* I moduli socket, time, os, sys, mimetypes, zlib, re
 * Il modulo OpenSSL per il server HTTPS
 
 Configurazione
