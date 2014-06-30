@@ -28,7 +28,11 @@ Requisiti
 
 Configurazione
 -----------------------------------
-In questa versione è necessario modificare il modulo "config.py" rispettando la sintassi Python
+In questa versione NON è più necessario modificare il file config.py
+La prima variabile nel file 'main.py' indica un file di configurazione.
+Sebbene non sia necessario è possibile crearlo e modificare a piacere gli attributi sotto,
+rispettando la sintassi conf e le sezioni. Tutto ciò che non viene menzionato o modificato
+viene lasciato con il suo valore di default
 Nota: Se il modulo OpenSSL non dovesse essere disponibile (Es. su Android)
 il server sicuro verrà disabilitato anche se abilitato nella configurazione
 
