@@ -23,7 +23,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-#Python server(v 2.3.0, pyml)
+#Python server(v 2.4.0 alpha, pyml)
 
 CONFIG_FILE="pyserver.conf"
 
@@ -275,13 +275,31 @@ class Client:
                     page+="index"+e
                     rel_page+="index"+e
                     break
-            if page[-1]=="/":
-                self.sendError(404)
-                return
         if   "gzip"    in self.header("Accept-Encoding"): self.compression = "gzip"
         elif "deflate" in self.header("Accept-Encoding"): self.compression = "deflate"
         page=shared.decodeurl(page)
-        debug(D, "[%s][%d] Richiesto file \"%s\"", self.addr, self.dbgnum, page)
+        cfg=None
+        dir=""
+        adm=False
+        fold=rel_page.split(os.sep)
+        for i in range(len(fold)):
+            f=fold[i]
+            dir=os.path.join(dir, f)
+            if os.path.exists(os.path.join(config.paths.webdisk, dir, config.paths.folder_cfg)):
+                adm=False
+                cfg=shared.readConfig(os.path.join(config.paths.webdisk, dir, config.paths.folder_cfg))
+                for e in cfg:
+                    adm=adm or cfg[e].is_admin_script
+                    if adm: break
+                if adm:
+                    page=os.path.join(config.paths.webdisk, dir, e)
+                    cfg=cfg[e]
+                    break
+        if adm:
+            debug(I, "[%s][%d] Folderscript trovato \"%s\"", self.addr, self.dbgnum, e)
+        else:
+            debug(D, "[%s][%d] Richiesto file \"%s\"", self.addr, self.dbgnum, rel_page)
+            cfg=None
         ispage=ispyml=False
         for e in config.misc.index_search_order:
             try:
@@ -291,9 +309,13 @@ class Client:
                     break
             except:pass
         self.state=self.S_PREPARING
-        if os.path.exists(page):
-            cfg=os.path.join(os.path.split(page)[0], config.paths.folder_cfg)
-            cfg=shared.readConfig(cfg)[os.path.split(page)[1]]
+        if os.path.isdir(page):
+            debug(I, "[%s][%d] Index file non trovato, invio 404", self.addr, self.dbgnum)
+            self.sendError(404)
+        elif os.path.exists(page):
+            if not cfg:
+                cfg=os.path.join(os.path.split(page)[0], config.paths.folder_cfg)
+                cfg=shared.readConfig(cfg)[os.path.split(page)[1]]
             if ispage:
                 if ispyml:
                     pdata=""
@@ -319,9 +341,12 @@ class Client:
                                 pdata+=precvd
                                 precvd=self.cl.recv(config.buffers.post_undefined_length)
                         debug(D, "[%s][%d] Ricevuti %d bytes da POST", self.addr, self.dbgnum, len(pdata))
+                    if cfg.is_admin_script:
+                        cfg["request_page"]=os.sep.join(fold[i+1:])
                     pyml.PyMl(page, self.request, args, pdata, self.header, self.cl, cfg)
                     self.state=self.S_TERMINATED
                 else:
+                    if adm:  debug(I, "[%s][%d] folderscript ignorato: %s non PyMl", self.addr, self.dbgnum, page)
                     if post: debug(I, "[%s][%d] POST ignorato: %s non PyMl", self.addr, self.dbgnum, page)
                     p=self.preparePage(page, rel_page, cfg)
                     self.state=self.S_SENDING
@@ -334,6 +359,8 @@ class Client:
                         debug(E, "[%s][%d] Errore interno, invio 500...", self.addr, self.dbgnum)
                         self.sendError(500)
             else:
+                if adm:  debug(I, "[%s][%d] folderscript ignorato: %s non PyMl", self.addr, self.dbgnum, page)
+                if post: debug(I, "[%s][%d] POST ignorato: %s non PyMl", self.addr, self.dbgnum, page)
                 p=self.prepareFile(page, rel_page, cfg)
                 for d in p:
                     if d == False:
@@ -450,7 +477,6 @@ class Client:
                 t=readtime(fp)
                 if t > time.time():
                     recreate=False
-                    size=os.stat(os.path.join(config.paths.cache, cache_name)).st_size
             if recreate:
                 debug(D, "[%s][%d] Cache '%s' scaduta", self.addr, self.dbgnum, rel)
                 src=open(fname, "rb")
