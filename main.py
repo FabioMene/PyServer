@@ -23,7 +23,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-#Python server(v 2.3.0, pyml)
+#Python server(v 2.4.0 alpha, pyml)
 
 CONFIG_FILE="pyserver.conf"
 
