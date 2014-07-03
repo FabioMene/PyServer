@@ -23,11 +23,12 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-#Python server(v 2.4.0 alpha, pyml)
+#Python server(v 2.3.0, pyml)
 
 CONFIG_FILE="pyserver.conf"
 
 import socket, time, os, sys, mimetypes, zlib, struct
+from multistream import MultiStream
 
 def readtime(f):
     return struct.unpack("<L", f.read(struct.calcsize("<L")))[0]
@@ -90,6 +91,20 @@ pyml.debug=debug
 shared.debug=debug
 
 debug(I, "[INIT] Inizio setup...")
+
+debug(D, "[INIT] Registrazione controlli input/output")
+
+sys.stdout = MultiStream()
+sys.stdout.registerUnregisteredDefaultStream(sys.__stdout__)
+sys.stdout.registerThread(sys.__stdout__)
+
+sys.stderr = MultiStream()
+sys.stderr.registerUnregisteredDefaultStream(sys.__stderr__)
+sys.stderr.registerThread(sys.__stderr__)
+
+sys.stdin  = MultiStream()
+sys.stdin.registerUnregisteredDefaultStream(sys.__stdin__)
+sys.stdin.registerThread(sys.__stdin__)
 
 debug(D, "[INIT] Controllo cartelle/percorsi ...")
 
@@ -637,6 +652,20 @@ while 1:
 if serv: serv.stop()
 if sserv: sserv.stop()
 
+for thread in enumerate():
+    try:
+        thread._Thread__stop()
+    except:
+        debug(W, "Impossibile terminare il thread '%s'", thread.getName())
+
 if DebugFile: DebugFile.close()
-exit(0)
+
+sys.stdout.unregisterAll()
+sys.stderr.unregisterAll()
+sys.stdin.unregisterAll()
+
+sys.stdout=sys.__stdout__
+sys.stderr=sys.__stderr__
+sys.stdin=sys.__stdin__
+
 

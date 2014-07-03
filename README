@@ -48,12 +48,12 @@ level        Imposta il livello di debug
              Un qualunque altro valore (Anche le lettere sopra in minuscolo)
              disabilita il debug
              ["I"]
-
+             
 use_colors   Su sistemi unix/linux o comunque terminali
              che supportano lo standard vt100 è possibile colorare
              i tag di debug per distinguerli meglio
              [False]
-
+             
 file_append  Se impostato a True aggiunge il debug al file invece che
              sovrascrivere il file stesso
              [False]
@@ -63,25 +63,25 @@ Sezione "paths"
 debug       E' possibile scrivere il debug anche su file.
             Per disabilitarlo lasciare il campo vuoto
             ["PyDebug.log"]
-
+            
 webdisk     La stringa indica un percorso, relativo o assoluto, indicante la radice
             dei file disponibili sul server
             ["webdisk"]
-
+            
 folder_cfg  A discapito del nome (mi girava così in quel momento) contiene le configurazioni delle cartelle dell' HD virtuale
             E' un dizionario a due strati (Pagine -> configurazione relativa alla stessa): tuttavia l'unico accessibile
             direttamente in pyml è l'ultimo strato (tramite 'configuration')
             Il file si presenta come un classico conf e questo è il nome che avrà per ogni cartella,
             dove le categorie corrispondono ai file a cui è riferita la configurazione.
             Le categorie funzionano anche come due tipi di regex:
-              la prima (shell type) scrivendola semplicemente nelle parentesi quadre e supporta i selettori '*' e '?' (anche multipli)
+              la prima (shell type) scrivendola semplicemente nelle parentesi quadre e supporta i selettori '*' e '?' (anche multipli) 
                 Es: [*.mk?] che seleziona (tra gli altri) tutti i file mkv e tutti i file mka
               la seconda (regex) scrivendo nelle parentesi quadre 're:' seguito dalla regex, SENZA SPAZIH!
                 Es: [re:.*\.(bmp|jpe?g|gif|png)] che seleziona (quasi) tutti i comuni file immagine (bmp, jpg, jpeg, gif, png)
-
+            
 cache       Qui verranno salvate le copie cache in formato GZip modificato (4 bytes per il secondo di scadenza e il resto GZip)
             ["tmp"]
-
+            
 https_key   La chiave privata e il certificato per il server HTTPS
 https_cert  Su linux/unix si possono generare con il comando
                 openssl genrsa -des3 -out chiave_privata_server.key 1024
@@ -96,11 +96,11 @@ Sezione "buffers"
 post_undefined_length  Quando il client esegue una richiesta POST senza il campo Content-Length nell'header
                        questa è la dimensione di ricezione del buffer
                        [128]
-
+                       
 send_buffer            Quando i file vengono inviati al client questa è la dimensione del buffer
                        Non deve mai essere superiore alla Window Size TCP (Generalmente 65536 Bytes)
                        [2048]
-
+                       
 tcp_receive_buffer     Questa è la dimensione di ricezione dei dati nelle richieste POST
                        Non deve mai essere superiore alla Window Size TCP (Generalmente 65536 Bytes)
                        [32768]
@@ -110,25 +110,25 @@ Sezione "cache"
 
 use                   Abilita la cache. Non può essere bypassato dalla cfg
                       [True]
-
+                      
 on_pages              Abilita il caching delle pagine statiche. Può essere bypassata. Valida solo su file .html e .htm
                       [True]
-
+                      
 pages_validity        Validità della cache delle pagine dalla creazione (o aggiornamento) espresso in secondi. Può essere bypassato dalla cfg
                       [300]
-
+                      
 on_files              Abilita il caching dei file. Può essere bypassata. Non valida su pagine statiche e dinamiche
                       [True]
-
+                      
 files_validity        Validità della cache dei file dalla creazione (o aggiornamento) espresso in secondi. Può essere bypassato dalla cfg
                       [300]
-
+                      
 on_large_files        Abilita il caching dei file grandi. Può essere bypassata. Non valida su pagine statiche e dinamiche
                       [True]
-
+                      
 large_files_low_size  Dimensione sopra la quale un file viene considerato grande. Non può essere bypassata
                       [1024*1024*4 alias 4 MiB]
-
+                      
 lfiles_validity       Validità della cache dei file dalla creazione (o aggiornamento) espresso in secondi. Può essere bypassato dalla cfg
                       [600]
 
@@ -139,7 +139,7 @@ index_search_order   La lista indica l'ordine di ricerca del file di index
                      http(s)://indirizzoserver/cartelle/altre_cartelle/
                      Se nessun file viene trovato viene inviato un errore 404
                      [[".pyml", ".pyhtml", ".html", ".htm"]] (è una lista!)
-
+                     
 {chroot_after_load}  Se impostato a True, una volta completato il caricamento dei server il programma
                      esegue un chroot su WEBDISK_PATH in modo da aumentare la sicurezza.
                      Richiede i privilegi di amministratore/root
@@ -158,7 +158,7 @@ port     La porta per il server HTTP. Per accedere al server usare http://indiri
          Se la porta è la 80 non serve aggiungere :porta all'URL, ma richiede i
          privilegi di root/amministratore per l'esecuzione del server
          [8080]
-
+         
 backlog  La coda del server HTTP. Un valore grande diminuisce il rischio
          di DoS (in particolare SYN Flood)
          a scapito delle prestazioni di rete
@@ -171,13 +171,13 @@ use      Se impostato a True viene attivato anche il server HTTPS.
          Sono inoltre necessari una chiave privata e un certificato
          (Vedi paths.https_key e paths.https_cert)
          [False]
-
+         
 port     La porta per il server HTTPS.
          Per accedere al server usare https://indirizzoserver:porta/
          Se la porta è la 443 non serve aggiungere :porta all'URL, ma richiede i
          privilegi di root/amministratore per l'esecuzione del server.
          [8443]
-
+         
 backlog  La coda del server HTTP. Un valore grande diminuisce il rischio
          di DoS (in particolare SYN Flood)
          a scapito delle prestazioni di rete
@@ -220,7 +220,7 @@ Un po di variabili servono ad integrare python con il server:
     sostituzione di '\n' in '<br />', abilitato di default, modificabile con .set_n_as_br(modo)
     streaming live, disabilitato di default, modificabile con .setWait(modo)
     flush coda, con .flush()
-
+    
 
 Gli argomenti e i dati POST sono automaticamente convertiti dal formato application/x-www-form-urlencoding ad ASCII
 o lasciati così come sono se vengono rilevati come binari
@@ -252,11 +252,6 @@ I campi sono:
     force_compression_quality Forza la qualità delle stringhe deflate, da 0 (Niente compressione, velocità alta)
                               a 9(Compressione massima, velocità bassa) [5]
     force_cache_validity      Forza la validità della cache a n secondi. 0 lascia l'impostazione automatica [0]
-    is_admin_script           Se importato a vero la cartella verrà gestita dallo script (Sia che i file esistano sia il contrario)
-                              Non supporta le regex (Il nome deve essere esplicito)
-                              La pagina richiesta viene resa disponibile nello script come configuration.request_page
-                              Non sono permessi 2 o più admin folderscript [False]
-
 
 Minishell
 -----------------------------------

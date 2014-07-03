@@ -64,4 +64,8 @@
                  il file di configurazione verra' ingorato e verranno applicati questi standard (o comunque vengono applicati dalla riga di errore in poi)
 
     Seconda release su github.com (https://github.com/FabioMene/PyServer)
-
+2014-07-03
+    Aggiunto file multistream.py al progetto (Permette di mappare piu' stream ad un solo oggetto stream)
+    * main.py: Aggiunto supporto a stream multipli
+    * pyml.py: Aggiunto supporto a stream multipli
+    Sistemato bug dello streaming contemporaneo (su github -> issues)

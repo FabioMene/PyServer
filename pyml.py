@@ -26,6 +26,7 @@
 # Parser PyMl
 
 import os, sys, shared, copy, struct, zlib, time
+from multistream import NullFile
 
 config={}
 
@@ -200,6 +201,12 @@ class PyMl:
         self.env={}
         self.document=Document(file, req, args, post, inheader)
         self.stream=Stream(client, req)
+        
+        null=NullFile()
+        sys.stdout.registerThread(self.stream)
+        sys.stderr.registerThread(self.stream)
+        sys.stdin.registerThread(null)
+        
         self.stream.header("Location", inheader("Host") or "")
         if "gzip" in inheader("Accept-Encoding"): self.stream.setCompressMode("gzip")
         elif "deflate" in inheader("Accept-Encoding"): self.stream.setCompressMode("deflate")
@@ -239,6 +246,9 @@ class PyMl:
         self.stream.header("Content-Length", self.stream.queued_data_size)
         self.stream.setWait(False)
         self.stream.write("", True)
+        sys.stdout.unregisterThread()
+        sys.stderr.unregisterThread()
+        sys.stdin.unregisterThread()
     def get_expression(self, expr):
         bf=ex=af=""
         for x in range(len(expr)):
@@ -270,16 +280,13 @@ class PyMl:
         if err: self.stream.write_plain("Errore(PyMl Parser): %d: %s<br />"%(self.line, err))
         import sys as private_sys
         quit=exit=private_sys.exit
-        private_sys.stdout=private_sys.__stdout__
         del private_sys
     def exit(self):
         raise PyMl_Exit_Request()
     def execute(donotdelete, segmenttonotdelete):
-        import sys as private_sys
         document=donotdelete.document
         configuration=donotdelete.configuration
-        stream=private_sys.stdout=donotdelete.stream
-        del private_sys
+        stream=donotdelete.stream
         for x in donotdelete.env:
             exec("%s = donotdelete.env[\"%s\"]"%(x, x))
         quit=donotdelete.exit
