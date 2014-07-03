@@ -61,7 +61,8 @@ DEFAULT_CONFIG={
 
     #Un po di misc non fa mai male!
     "misc": {
-        "index_search_order": [".pyml", ".pyhtml", ".htm", ".html"] # Ordine di ricerca del file index
+        "index_search_order":    [".pyml", ".pyhtml", ".htm", ".html"], # Ordine di ricerca del file index
+        "server_error_template": "" # Maschera errori HTTP
     },
 
     #Configurazione porte

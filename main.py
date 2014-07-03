@@ -23,7 +23,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-#Python server(v 2.4.0 alpha, pyml)
+#Python server(v 2.5.0a r1, pyml)
 
 CONFIG_FILE="pyserver.conf"
 
@@ -139,6 +139,33 @@ if os.getuid() != 0 or os.geteuid() != 0:
     if config.https.use and config.https.port < 1024:
         debug(W, "[INIT] Porta HTTPS < 1024 (%d): potrebbe essere necessario essere root/admin", config.https.port)
 
+SERVER_ERROR_TEMPLATE="""
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <title>Errore HTTP %errnum</title>
+        <style>
+            body{
+                font-family: helvetica, sans, arial;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Errore HTTP %errnum</h1>
+        <h4>%errdesc</h4>
+    </body>
+</html>
+"""
+
+if config.misc.server_error_template:
+    debug(D, "[INIT] Controllo template di errore HTTP")
+    try:
+        fp=open(config.misc.server_error_template, "r")
+        SERVER_ERROR_TEMPLATE = fp.read()
+        fp.close()
+    except:
+        debug(W, "[INIT] Impossibile aprire il template '%s' in lettura", config.misc.server_error_template)
 
 class Server(Thread):
     sock=None
@@ -560,43 +587,23 @@ class Client:
             self.state=self.S_TERMINATED
             return True
     def sendError(self, code):
-        template="""
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-    <head>
-        <title>Errore HTTP %d</title>
-        <style>
-            body{
-                font-family: helvetica, sans, arial;
-                background-image: url('/pyserverback.png');
-                position: fixed;
-                background-repeat: no-repeat;
-                background-size: cover;
-            }
-        </style>
-    </head>
-    <body>
-        <h1>Errore HTTP %d</h1>
-        <h4>%s</h4>
-    </body>
-</html>"""
+        template=SERVER_ERROR_TEMPLATE
         s=""
-        if code==403:
-            d="403 Unauthorized"
-            template=template%(403, 403, "Non sei autorizzato per vedere questa pagina/file!")
+        if code==401:
+            s="401 Unauthorized"
+            template=template.replace("%errnum", "401").replace("%errdesc", "Non sei autorizzato per vedere questa pagina/file!")
         elif code==404:
             s="404 Not Found"
-            template=template%(404, 404, "File non trovato!")
+            template=template.replace("%errnum", "404").replace("%errdesc", "File non trovato")
         elif code==400:
             s="400 Bad Request"
-            template=template%(400, 400, "Il browser ha inviato una richiesta non valida")
+            template=template.replace("%errnum", "400").replace("%errdesc", "Il browser ha inviato una richiesta non valida")
         elif code==405:
             s="405 Method Not Allowed"
-            template=template%(405, 405, "Il metodo richiesto dal browser non è consentito")
+            template=template.replace("%errnum", "405").replace("%errdesc", "Il metodo richiesto dal browser non è consentito")
         else:
             s="500 Internal Server Error"
-            template=template%(500, 500, "Errore Server: ci scusiamo per il disagio")
+            template=template.replace("%errnum", "500").replace("%errdesc", "Errore Server: ci scusiamo per il disagio")
         p=Page(template, len(template), "identity")
         self.cl.send("HTTP/1.1 "+s+"\r\nLocation: %s\r\nContent-Length: %d\r\nContent-Type: text/html; charset=%s\r\nContent-Encoding: %s\r\n%sConnection: close\r\n\r\n"%(self.header("Host"), p.size(), self.coding.upper(), p.compression(), shared.generateDate()))
         if self.request!="HEAD": self.cl.send(str(p))

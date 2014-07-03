@@ -69,3 +69,5 @@
     * main.py: Aggiunto supporto a stream multipli
     * pyml.py: Aggiunto supporto a stream multipli
     Sistemato bug dello streaming contemporaneo (su github -> issues)
+
+    * Spostato il template per errore HTTP nella configurazione
